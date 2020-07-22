@@ -39,7 +39,7 @@ void MultiChannel_stability(string dataDir)
 		sprintf(filename, "%d.Spe", n);
 		// cout << filename << endl;
 
-		Measure[n] = (n+1)*1/6.;
+		Measure[n] = (n+1)*time/3600.;
 		
 		TH1F *h = new TH1F(filename,";Channel;Counts", channelNum, 0, channelNum);
 
