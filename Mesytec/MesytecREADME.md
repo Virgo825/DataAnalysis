@@ -1,9 +1,9 @@
 
-Mesytec电子学硬件部分由MCPD与MPSD-8+组成，均为NIM机箱插件，一块MPSD-8+可以为8根相同的3He管提供高压并获取数据，由一路高压输入和8组高压输出组成，MPSD-8+数据通过插件后端的单芯lemo接头传输到MCPD的前面板Bus Section，  Monitor/Chopper Section接入T0，T0为单芯lemo，数据经过以太网（最大支持百兆）传到上位机，需要的上位机为Debian7操作系统，软件安装步骤如下：
+`Mesytec`电子学硬件部分由`MCPD`与`MPSD-8+`组成，均为`NIM`机箱插件，一块`MPSD-8+`可以为8根相同的`3He`管提供高压并获取数据，由一路高压输入和8组高压输出组成，`MPSD-8+`数据通过插件后端的单芯`lemo`接头传输到`MCPD`的前面板`Bus Section`，  `Monitor/Chopper Section`接入`T0`，`T0`为单芯`lemo`，数据经过以太网（最大支持百兆）传到上位机，需要的上位机为`Debian7`操作系统，软件安装步骤如下：
 
-192.168.168.121
+`192.168.168.121`
 
-安装完成后，在终端输入qmesydaq，即可打开软件GUI界面。
+安装完成后，在终端输入`qmesydaq`，即可打开软件`GUI`界面。
 1. Files中，主要使用Save Histogram File，保存数据为mtxt格式，Export PDF导出PDF，Export SVG导出矢量图（svg格式）。
 1. Configuration->General，可以设置文件、直方图保存路径。
 2. Configuration->Mode，选择Superuser。
