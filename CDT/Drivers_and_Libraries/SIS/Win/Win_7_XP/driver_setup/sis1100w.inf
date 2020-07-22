@@ -1,0 +1,165 @@
+;===========================================================
+;
+; File    : sis1100w.inf
+;
+; Abstract: Windows INF for SIS1100 boards with PLX chips
+;
+; Revision: PLX SDK v6.42
+;
+; (c) 2008 - 2011 Struck Innovative Systeme GmbH
+;
+;===========================================================
+
+[Version]
+Signature         = $Windows NT$
+Provider          = %PLX%
+Class             = SISAcqDevices
+ClassGuid         = {944ADDE8-4F6D-4BEE-A309-7AD62AB0B4BB}
+DriverVer         = 02/01/2012, 6.4.2.0
+CatalogFile	  = sis1100w.cat
+
+; SIS Class
+[ClassInstall32]
+AddReg=ClassInstall_AddReg
+
+[ClassInstall_AddReg]
+HKR,,,,%SISClassName%
+HKR,,Icon,,"-5"
+
+[Manufacturer]
+%PLX% = PLX.Mfg, NTamd64
+
+;-----------------------------------------------------------
+; Device identification for 32-bit Windows
+;-----------------------------------------------------------
+[PLX.Mfg]
+"SIS1100-CMC"                           	= DDInstall_9054, PCI\VEN_1796&DEV_0001
+"SIS1100-eCMC 1Link"                    	= DDInstall_8311, PCI\VEN_1796&DEV_0011
+"SIS1100-eCMC 1Link (Development Version)"      = DDInstall_8311, PCI\VEN_1796&DEV_000E
+
+;-----------------------------------------------------------
+; Device identification for 64-bit Windows x64
+;-----------------------------------------------------------
+[PLX.Mfg.NTamd64]
+"SIS1100-CMC (64bit)"                           = DDInstall_9054, PCI\VEN_1796&DEV_0001
+"SIS1100-eCMC 1Link (64bit)"                    = DDInstall_8311, PCI\VEN_1796&DEV_0011
+"SIS1100-eCMC 1Link (Development Version)"      = DDInstall_8311, PCI\VEN_1796&DEV_000E
+
+;-----------------------------------------------------------
+; CopyFiles section
+;
+; Flags: 0x00000004 = COPYFLG_NOVERSIONCHECK
+;-----------------------------------------------------------
+[CopyFiles_PlxDll]
+PlxApi642.dll,,,0x00000004
+
+[CopyFiles_PlxDllx64]
+PlxApi642_x64.dll,,,0x00000004
+
+[CopyFiles_WrapperDll]
+sis1100w.dll,,,0x00000004
+
+[CopyFiles_WrapperDllx64]
+sis1100w_x64.dll,,,0x00000004
+
+[CopyFiles_9054]
+Plx9054.sys,,,0x00000004
+
+[CopyFiles_8311]
+Plx8311.sys,,,0x00000004
+
+;-----------------------------------------------------------
+; Driver installation section
+;
+; NOTE:  To enable file copy for distribution, remove the
+;        comment symbol (;) from each "CopyFiles" line.
+;-----------------------------------------------------------
+[DDInstall_9054.NT]
+AddReg    = AddRegistry_NT_9054
+CopyFiles = CopyFiles_9054, CopyFiles_WrapperDll, CopyFiles_PlxDll
+
+[DDInstall_9054.NTamd64]
+AddReg    = AddRegistry_NT_9054
+CopyFiles = CopyFiles_9054, CopyFiles_WrapperDll, CopyFiles_WrapperDllx64, CopyFiles_PlxDll, CopyFiles_PlxDllx64
+
+[DDInstall_8311.NT]
+AddReg    = AddRegistry_NT_8311
+CopyFiles = CopyFiles_8311, CopyFiles_WrapperDll, CopyFiles_PlxDll
+
+[DDInstall_8311.NTamd64]
+AddReg    = AddRegistry_NT_8311
+CopyFiles = CopyFiles_8311, CopyFiles_WrapperDll, CopyFiles_WrapperDllx64, CopyFiles_PlxDll, CopyFiles_PlxDllx64
+
+;-----------------------------------------------------------
+; AddService section
+;-----------------------------------------------------------
+[DDInstall_9054.NT.Services]
+AddService = Plx9054, 0x00000002, Service_Inst_9054
+[DDInstall_9054.NTamd64.Services]
+AddService = Plx9054, 0x00000002, Service_Inst_9054
+
+[DDInstall_8311.NT.Services]
+AddService = Plx8311, 0x00000002, Service_Inst_8311
+[DDInstall_8311.NTamd64.Services]
+AddService = Plx8311, 0x00000002, Service_Inst_8311
+
+;-----------------------------------------------------------
+; AddRegistry section
+;-----------------------------------------------------------
+[AddRegistry_NT_9054]
+HKLM,System\CurrentControlSet\Services\Plx9054,CommonBufferSize,0x00010003,0x20000
+
+[AddRegistry_NT_8311]
+HKLM,System\CurrentControlSet\Services\Plx8311,CommonBufferSize,0x00010003,0x20000
+
+;-----------------------------------------------------------
+; Service installation section
+;-----------------------------------------------------------
+[Service_Inst_9054]
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 0                  ; SERVICE_ERROR_IGNORE
+ServiceBinary  = %12%\Plx9054.sys
+
+[Service_Inst_8311]
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 0                  ; SERVICE_ERROR_IGNORE
+ServiceBinary  = %12%\Plx8311.sys
+
+;-----------------------------------------------------------
+; Source file information
+;-----------------------------------------------------------
+
+[SourceDisksNames]
+1 = %InstallDisk%
+2 = %InstallDisk%,,,\x86
+3 = %InstallDisk%,,,\amd64
+
+[SourceDisksFiles]
+PlxApi642.dll = 1
+PlxApi642_x64.dll = 1
+sis1100w.dll = 1
+sis1100w_x64.dll = 1
+[SourceDisksFiles.x86]
+Plx9054.sys = 2
+Plx8311.sys = 2
+[SourceDisksFiles.amd64]
+Plx9054.sys = 3
+Plx8311.sys = 3
+
+[DestinationDirs]
+CopyFiles_PlxDll = 16425       ;16425 = %WinDir%\System32 (or SysWOW64)
+CopyFiles_PlxDllx64 = 11       ;11    = %WinDir%\System32 always
+CopyFiles_WrapperDll = 16425   ;16425 = %WinDir%\System32 (or SysWOW64)
+CopyFiles_WrapperDllx64 = 11   ;11    = %WinDir%\System32 always
+DefaultDestDir   = 12          ;12    = Drivers Directory
+
+;-----------------------------------------------------------
+; String information
+;-----------------------------------------------------------
+
+[Strings]
+InstallDisk  = "SIS1100 Installation Disk"
+PLX          = "SIS GmbH"
+SISClassName = "SIS Acquisition Devices"

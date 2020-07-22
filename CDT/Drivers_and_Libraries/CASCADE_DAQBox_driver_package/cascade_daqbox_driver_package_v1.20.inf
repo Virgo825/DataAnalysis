@@ -1,0 +1,98 @@
+; A step by step explanation of their inf file can be found in AN61465 by Cypress.
+
+
+; Installation INF for the CDT drivers for Windows 7 (and probably Vista, but untested) 64 Bit
+;
+; (c) Copyright 2014 CDT CASCADE Detector Technologies GmbH
+;
+
+[Version]
+; This means the driver is for all Windows OSs. The OS is narrowed down later.
+Signature = "$Windows NT$"
+; There are a few dozen Device Setup Classes. You can define a new one, but should only do so if really necessary.
+Class = USB
+; The ClassGUID is defined by the Class value. Each Device Setup Class has a ClassGUID.
+ClassGUID = {36FC9E60-C465-11CF-8056-444553540000}
+; Text within between "%" is a string variable that is defined in the "[Strings]" section.
+provider = %provider%
+CatalogFile = CASCADE_DAQBox_driver_package_v1.20.cat
+DriverVer = 01/09/2015, 1.20.00
+
+[SourceDisksNames]
+; The name of the installation disc, which seems superfluous nowadays, but is mandatory. A number is assigned.
+1 = %CDT_Install%,,,
+
+; The files that have to be copied during driver installation. The number refers to the installation source (see above).
+[SourceDisksFiles.x86]
+CASCADE_DAQBox_driver.sys = 1,\WinXP_x86
+[SourceDisksFiles.amd64]
+CASCADE_DAQBox_driver.sys = 1,\Win7_x64
+
+[DestinationDirs]
+; The default directory for any file operations specified in the inf file.
+; In this case the number sets it to the ../system32/drivers directory where the driver files are copied.
+DefaultDestDir = 12
+
+; Here all manufacturers of all supported devices are listed. In this case there is only one.
+[Manufacturer]
+; "%provider%" specifies the displayed name, "CDT" names the following sections where the devices are listed for the manufacturer.
+; The driver is for x64 ("NTamd64") Win7 and Vista ("6") systems. This could be a comma-separated list for many OSs.
+%provider% = CDT, NTx86, NTamd64.6
+
+; Here all supported devices of the specific manufacturer are listed, in this case only one.
+; The exension (after the dot) specifies the OS.
+; "%DAQBox_16D0/09EB%" is the device description and "DAQBox" names the following sections where it is defined.
+; The following Hardware-ID declares a USB device ("USB") that is identified by its VID/PID ("VID_16D0&PID_09EB").
+[CDT.NTx86]
+%DAQBox_16D0/09EB% = DAQBox, USB\VID_16D0&PID_09EB
+[CDT.NTamd64.6]
+%DAQBox_16D0/09EB% = DAQBox, USB\VID_16D0&PID_09EB
+
+; From here on I do not use the OS specifiers any more because the procedure is identical for all OSes.
+; As I understand it, the decision to install or not install the driver is made in the previous section, where I use the specifiers.
+
+; The files that have to be copied during installation are listed here. They are copied to DefaultDestDir (see above).
+[DAQBox]
+CopyFiles = @CASCADE_DAQBox_driver.sys
+AddReg = DAQBox.AddReg
+
+[DAQBox.HW]
+AddReg = DAQBox.AddReg.Guid
+
+; This section is mandatory and references other sections.
+[DAQBox.Services]
+Addservice = DAQBox, 2, DAQBox.AddService
+
+[DAQBox.AddReg]
+; Cypress comment: Deprecating - do not use in new apps to identify a CYUSB driver
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,CASCADE_DAQBox_driver.sys
+; Cypress comment: You may optionally include a check for DriverBase in your application to check for a CYUSB driver
+HKR,,DriverBase,,CASCADE_DAQBox_driver.sys
+HKR,"Parameters","MaximumTransferSize",0x10001,4096
+HKR,"Parameters","DebugLevel",0x10001,2
+HKR,,FriendlyName,,%description%
+
+; Driver properties are defined here.
+[DAQBox.AddService]
+DisplayName    = %description%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\CASCADE_DAQBox_driver.sys
+AddReg         = DAQBox.AddReg
+LoadOrderGroup = Base
+
+[DAQBox.AddReg.Guid]
+HKR,,DriverGUID,,%DAQBox.GUID%
+
+; All the string variables (the names between "%" characters) are declared here.
+[Strings]
+provider			= "CDT CASCADE Detector Technologies GmbH"
+description 		= "CASCADE DAQbox driver"
+DAQBox_16D0/09EB	= "CASCADE DAQBox"
+CDT_Install			= "CASCADE_SW_DISC"
+; Every driver should have a unique GUID (this is different from the class GUID). It does not change between driver versions. It can be generated with guidgen.exe.
+DAQBox.GUID			= "{96B096DE-EE48-4905-9A81-331B2A072819}"
+
+
