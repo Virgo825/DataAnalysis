@@ -107,14 +107,29 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	cout << "\nProcessing " << filename << ".tof ..." << endl;
 
 	char name[50] = "";
+	double timeStart = 0., timeEnd = 0.;
 	double waveStart = 0., waveEnd = 0.;
-	if (mode != "all")
+	if (mode == "cut_t")
+	{
+		// set the tof range
+		cout << "Please input the tof range [us]: ";
+		scanf("%lf %lf", &timeStart, &timeEnd);
+		sprintf(name, "%.1lfus_%.1lfus", timeStart, timeEnd);
+		// get the wavelength range
+		waveStart = timeStart / (252.778 * Length);
+		waveEnd = timeEnd / (252.778 * Length);
+		cout << "Wavelength range: " << waveStart << " A - " << waveEnd << " A." << endl;
+	}
+	if (mode == "cut_w")
 	{
 		// set the wavelength range
-		cout << "Please input the wavelength range: ";
+		cout << "Please input the wavelength range [A]: ";
 		scanf("%lf %lf", &waveStart, &waveEnd);
-		cout << "TOF range: " << 252.778 * Length * waveStart << " us - " << 252.778 * Length * waveEnd << " us." << endl;
 		sprintf(name, "%.1lfA_%.1lfA", waveStart, waveEnd);
+		// get the tof range
+		timeStart = 252.778 * Length * waveStart;
+		timeEnd = 252.778 * Length * waveEnd;
+		cout << "TOF range: " << timeStart << " us - " << timeEnd << " us." << endl;
 	}
 
 	// create 3D histogram (x, y, t)
@@ -132,7 +147,7 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 				rawData >> temp; // counts of every pad (channel*channel) in every width_bin
 				// Intercept a specific wavelength range
 				if (mode != "all")
-					if ((i <= 252.778 * Length * waveStart / width_bin) || (i >= 252.778 * Length * waveEnd / width_bin))
+					if ((i <= timeStart / width_bin) || (i >= timeEnd / width_bin))
 						continue;
 				// Fill 3D hist
 				hxyt->SetBinContent(j + 1, k + 1, i + 1, temp); // maybe need to exchange j and k.
@@ -165,7 +180,7 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 		h[2]->GetYaxis()->SetTitle("Counts");
 
 		h[3] = (TH1D *)hxyt->Project3D("y"); // y
-		h[3]->SetTitle(("X Projection " + string(name)).c_str());
+		h[3]->SetTitle(("Y Projection " + string(name)).c_str());
 		h[3]->GetYaxis()->SetTitle("Counts");
 	}
 	// create canvases for different mode
