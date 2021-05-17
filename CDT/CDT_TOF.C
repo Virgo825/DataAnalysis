@@ -18,14 +18,23 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	const int channel = 64;		   // channels of detector (x or y)
 	const double padSize = 1.5625; // mm
 
-	const int width_bin = 40; // per bin (us)
-	const int n_line = 1000;  // number of bin
+	const int width_bin = 100; // per bin (us)
+	const int n_line = 400;  // number of bin
 
-	const double Length = 8.971 + 4.955 + 0.04; // m
+	const double Length = 11.4 + 3.75 + 0.04; // m
 
 	gStyle->SetPalette(1);	  // set 2D color
 	gStyle->SetOptFit(0111);  // set fit parameter
 	gStyle->SetOptStat(0000); // set hist parameter
+	gStyle->SetTextFont(22);
+	gStyle->SetLabelFont(22);
+	gStyle->SetTitleFont(22);
+	gStyle->SetLegendFont(22);
+	gStyle->SetPadGridX(true);
+	gStyle->SetPadGridY(true);
+	gStyle->SetPadTickX(true);
+	gStyle->SetPadTickY(true);
+	gStyle->SetFillStyle(0);
 
 	// transform the raw data into 3D histogram
 	ifstream rawData(filename.c_str());
@@ -92,13 +101,11 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	for (int i = 0; i < (projection != "no" ? nCanvas : (nCanvas - 2)); i++)
 	{
 		c[i] = new TCanvas();
-		c[i]->SetGrid();
-		c[i]->SetRightMargin(0.2);
-		c[i]->SetLeftMargin(0.2);
-		c[i]->SetTickx(1);
-		c[i]->SetTicky(1);
 		if (i == 0)
 		{
+			c[i]->SetRightMargin(0.2);
+			c[i]->SetLeftMargin(0.2);
+			c[i]->SetGrid(0);
 			TH2D_setting(hxy);
 			hxy->SetTitle(" ");
 			hxy->SetContour(50);
