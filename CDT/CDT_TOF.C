@@ -34,7 +34,7 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 			 << "Number of strips in X or Y: " << channel << "\n"
 			 << "Width of bin:  " << width_bin << " us\n"
 			 << "Number of bin: " << n_line << endl;
-		
+
 		filename += ".tof";
 	}
 	else
@@ -48,12 +48,12 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 			char *token = strtok(line, ":");
 			while (token)
 			{
-				if(strcmp(token, "File Name ") == 0)
+				if (strcmp(token, "File Name ") == 0)
 				{
 					// windows system line feed contains /r.
-					token = strtok(NULL, " \r");					
-					filename = filename.substr(0, filename.find_last_of("/")+1) + string(token);
-				}  
+					token = strtok(NULL, " \r");
+					filename = filename.substr(0, filename.find_last_of("/") + 1) + string(token);
+				}
 				else if (strcmp(token, "No of X Stripes or Pixel ") == 0)
 				{
 					token = strtok(NULL, " ");
@@ -109,35 +109,67 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	rawData.open(filename.c_str());
 	if (rawData.fail())
 	{
-		cout << "Can not find the file " << filename  << endl;
+		cout << "Can not find the file " << filename << endl;
 		exit(0);
 	}
 	cout << "\nProcessing " << filename << " ..." << endl;
 
-	char name[50] = "";
+	char name[128] = "";
 	double timeStart = 0., timeEnd = 0.;
 	double waveStart = 0., waveEnd = 0.;
+	double xPosStart = 0., xPosEnd = 0.;
+	double yPosStart = 0., yPosEnd = 0.;
 	if (mode == "cut_t")
 	{
 		// set the tof range
 		cout << "Please input the tof range [ms]: ";
 		scanf("%lf %lf", &timeStart, &timeEnd);
-		sprintf(name, "%.2lfms_%.2lfms", timeStart, timeEnd);
+		sprintf(name, "%.1lfms-%.1lfms", timeStart, timeEnd);
 		// get the wavelength range
 		waveStart = timeStart * 1000 / (252.778 * Length);
 		waveEnd = timeEnd * 1000 / (252.778 * Length);
 		cout << "Wavelength range: " << waveStart << " A - " << waveEnd << " A." << endl;
 	}
-	if (mode == "cut_w")
+	else if (mode == "cut_w")
 	{
 		// set the wavelength range
 		cout << "Please input the wavelength range [A]: ";
 		scanf("%lf %lf", &waveStart, &waveEnd);
-		sprintf(name, "%.1lfA_%.1lfA", waveStart, waveEnd);
+		sprintf(name, "%.1lfA-%.1lfA", waveStart, waveEnd);
 		// get the tof range
 		timeStart = 252.778 * Length * waveStart / 1000.;
 		timeEnd = 252.778 * Length * waveEnd / 1000.;
 		cout << "TOF range: " << timeStart << " ms - " << timeEnd << " ms." << endl;
+	}
+	else if (mode == "cut_p")
+	{
+		// set the X and Y range
+		cout << "Please input the X range [mm]: ";
+		scanf("%lf %lf", &xPosStart, &xPosEnd);
+		cout << "Please input the Y range [mm]: ";
+		scanf("%lf %lf", &yPosStart, &yPosEnd);
+		sprintf(name, "X(%.1lf-%.1lfmm)_Y(%.1lf-%.1lfmm)", xPosStart, xPosEnd, yPosStart, yPosEnd);
+		cout << "X range: " << xPosStart << " mm - " << xPosEnd << " mm." << endl;
+		cout << "Y range: " << yPosStart << " mm - " << yPosEnd << " mm." << endl;
+	}
+	else if (mode == "cut_wp")
+	{
+		// set the wavelength range
+		cout << "Please input the wavelength range [A]: ";
+		scanf("%lf %lf", &waveStart, &waveEnd);
+		// set the X and Y range
+		cout << "Please input the X range [mm]: ";
+		scanf("%lf %lf", &xPosStart, &xPosEnd);
+		cout << "Please input the Y range [mm]: ";
+		scanf("%lf %lf", &yPosStart, &yPosEnd);
+		sprintf(name, "%.1lf-%.1lfA_X(%.1lf-%.1lfmm)_Y(%.1lf-%.1lfmm)", waveStart, waveEnd, xPosStart, xPosEnd, yPosStart, yPosEnd);
+		// get the tof range
+		timeStart = 252.778 * Length * waveStart / 1000.;
+		timeEnd = 252.778 * Length * waveEnd / 1000.;
+		cout << "TOF range:        " << timeStart << " ms - " << timeEnd << " ms." << endl;
+		cout << "Wavelength range: " << waveStart << " A  - " << waveEnd << " A." << endl;
+		cout << "X range:          " << xPosStart << " mm - " << xPosEnd << " mm." << endl;
+		cout << "Y range:          " << yPosStart << " mm - " << yPosEnd << " mm." << endl;
 	}
 
 	// create 3D histogram (x, y, t)
@@ -153,12 +185,25 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 			for (int k = 0; k < channel; k++)
 			{
 				rawData >> temp; // counts of every pad (channel*channel) in every width_bin
-				// Intercept a specific wavelength range
+
+				// Fill 3D hist, intercept a specific range, maybe need to exchange j and k.
 				if (mode == "cut_t" || mode == "cut_w")
-					if ((i <= timeStart * 1000 / width_bin) || (i >= timeEnd * 1000 / width_bin))
-						continue;
-				// Fill 3D hist
-				hxyt->SetBinContent(j + 1, k + 1, i + 1, temp); // maybe need to exchange j and k.
+				{
+					if ((i >= timeStart * 1000 / width_bin) && (i <= timeEnd * 1000 / width_bin))
+						hxyt->SetBinContent(j + 1, k + 1, i + 1, temp);
+				}
+				else if (mode == "cut_p")
+				{
+					if ((j >= xPosStart / padSize) && (j <= xPosEnd / padSize) && (k >= yPosStart / padSize) && (k <= yPosEnd / padSize))
+						hxyt->SetBinContent(j + 1, k + 1, i + 1, temp);
+				}
+				else if (mode == "cut_wp")
+				{
+					if ((i >= timeStart * 1000 / width_bin) && (i <= timeEnd * 1000 / width_bin) && (j >= xPosStart / padSize) && (j <= xPosEnd / padSize) && (k >= yPosStart / padSize) && (k <= yPosEnd / padSize))
+						hxyt->SetBinContent(j + 1, k + 1, i + 1, temp);
+				}
+				else
+					hxyt->SetBinContent(j + 1, k + 1, i + 1, temp);
 			}
 		}
 	}
@@ -171,12 +216,10 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 
 	// time of flight spectrum
 	h[0] = (TH1D *)hxyt->Project3D("z");
-	h[0]->SetTitle(("Time of Flight " + string(name)).c_str());
 	h[0]->GetYaxis()->SetTitle("Counts");
 
 	// wavelength spectrum
 	h[1] = new TH1D("", ";Neutron wavelength [#AA];Counts", n_line, 0., (n_line * width_bin) / (252.778 * Length));
-	h[1]->SetTitle(("Neutron wavelength " + string(name)).c_str());
 	for (int i = 0; i < n_line; i++)
 		h[1]->SetBinContent(i + 1, h[0]->GetBinContent(i + 1));
 
@@ -184,23 +227,23 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	if (projection != "no")
 	{
 		h[2] = (TH1D *)hxyt->Project3D("x"); // x
-		h[2]->SetTitle(("X Projection " + string(name)).c_str());
 		h[2]->GetYaxis()->SetTitle("Counts");
 
 		h[3] = (TH1D *)hxyt->Project3D("y"); // y
-		h[3]->SetTitle(("Y Projection " + string(name)).c_str());
 		h[3]->GetYaxis()->SetTitle("Counts");
 	}
+
 	// create canvases for different mode
 	const int nCanvas = 5;
+	char c_name[nCanvas][128] = {"2D Imaging ", "Time of Flight ", "Neutron wavelength ", "X Projection ", "Y Projection "};
 	TCanvas *c[nCanvas];
 	for (int i = 0; i < (projection != "no" ? nCanvas : (nCanvas - 2)); i++)
 	{
 		c[i] = new TCanvas();
+		c[i]->SetTitle((string(c_name[i]) + string(name)).c_str());
+		c[i]->SetName((string(c_name[i]) + string(name)).c_str());
 		if (i == 0)
 		{
-			c[i]->SetName("2D Imaging");
-			c[i]->SetTitle("2D Imaging");
 			c[i]->SetTicks();
 			c[i]->SetRightMargin(0.2);
 			c[i]->SetLeftMargin(0.2);
@@ -215,8 +258,6 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 		}
 		else
 		{
-			c[i]->SetName(h[i - 1]->GetTitle());
-			c[i]->SetTitle(h[i - 1]->GetTitle());
 			c[i]->SetGrid();
 			c[i]->SetTicks();
 			TH1D_setting(h[i - 1]);
@@ -225,6 +266,7 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 		}
 	}
 }
+
 // 1D histogram setting
 void TH1D_setting(TH1D *myHist)
 {
@@ -237,6 +279,7 @@ void TH1D_setting(TH1D *myHist)
 	myHist->GetYaxis()->SetLabelFont(22);
 	myHist->GetYaxis()->SetTitleFont(22);
 }
+
 // 2D histogram setting
 void TH2D_setting(TH2D *myHist)
 {
