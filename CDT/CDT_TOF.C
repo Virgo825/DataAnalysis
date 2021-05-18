@@ -112,12 +112,12 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	if (mode == "cut_t")
 	{
 		// set the tof range
-		cout << "Please input the tof range [us]: ";
+		cout << "Please input the tof range [ms]: ";
 		scanf("%lf %lf", &timeStart, &timeEnd);
-		sprintf(name, "%.1lfus_%.1lfus", timeStart, timeEnd);
+		sprintf(name, "%.2lfms_%.2lfms", timeStart, timeEnd);
 		// get the wavelength range
-		waveStart = timeStart / (252.778 * Length);
-		waveEnd = timeEnd / (252.778 * Length);
+		waveStart = timeStart * 1000 / (252.778 * Length);
+		waveEnd = timeEnd * 1000 / (252.778 * Length);
 		cout << "Wavelength range: " << waveStart << " A - " << waveEnd << " A." << endl;
 	}
 	if (mode == "cut_w")
@@ -127,9 +127,9 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 		scanf("%lf %lf", &waveStart, &waveEnd);
 		sprintf(name, "%.1lfA_%.1lfA", waveStart, waveEnd);
 		// get the tof range
-		timeStart = 252.778 * Length * waveStart;
-		timeEnd = 252.778 * Length * waveEnd;
-		cout << "TOF range: " << timeStart << " us - " << timeEnd << " us." << endl;
+		timeStart = 252.778 * Length * waveStart / 1000.;
+		timeEnd = 252.778 * Length * waveEnd / 1000.;
+		cout << "TOF range: " << timeStart << " ms - " << timeEnd << " ms." << endl;
 	}
 
 	// create 3D histogram (x, y, t)
@@ -146,8 +146,8 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 			{
 				rawData >> temp; // counts of every pad (channel*channel) in every width_bin
 				// Intercept a specific wavelength range
-				if (mode != "all")
-					if ((i <= timeStart / width_bin) || (i >= timeEnd / width_bin))
+				if (mode == "cut_t" || mode == "cut_w")
+					if ((i <= timeStart * 1000 / width_bin) || (i >= timeEnd * 1000 / width_bin))
 						continue;
 				// Fill 3D hist
 				hxyt->SetBinContent(j + 1, k + 1, i + 1, temp); // maybe need to exchange j and k.
