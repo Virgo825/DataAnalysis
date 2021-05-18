@@ -34,6 +34,8 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 			 << "Number of strips in X or Y: " << channel << "\n"
 			 << "Width of bin:  " << width_bin << " us\n"
 			 << "Number of bin: " << n_line << endl;
+		
+		filename += ".tof";
 	}
 	else
 	{
@@ -46,7 +48,13 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 			char *token = strtok(line, ":");
 			while (token)
 			{
-				if (strcmp(token, "No of X Stripes or Pixel ") == 0)
+				if(strcmp(token, "File Name ") == 0)
+				{
+					// windows system line feed contains /r.
+					token = strtok(NULL, " \r");					
+					filename = filename.substr(0, filename.find_last_of("/")+1) + string(token);
+				}  
+				else if (strcmp(token, "No of X Stripes or Pixel ") == 0)
 				{
 					token = strtok(NULL, " ");
 					channel = atoi(token);
@@ -98,13 +106,13 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 
 	// process tof file
 	// transform the raw data into 3D histogram
-	rawData.open((filename + ".tof").c_str());
+	rawData.open(filename.c_str());
 	if (rawData.fail())
 	{
-		cout << "Can not find the file " << filename << ".tof" << endl;
+		cout << "Can not find the file " << filename  << endl;
 		exit(0);
 	}
-	cout << "\nProcessing " << filename << ".tof ..." << endl;
+	cout << "\nProcessing " << filename << " ..." << endl;
 
 	char name[50] = "";
 	double timeStart = 0., timeEnd = 0.;
@@ -191,8 +199,8 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 		c[i] = new TCanvas();
 		if (i == 0)
 		{
-			c[i]->SetName("2D Profile");
-			c[i]->SetTitle("2D Profile");
+			c[i]->SetName("2D Imaging");
+			c[i]->SetTitle("2D Imaging");
 			c[i]->SetTicks();
 			c[i]->SetRightMargin(0.2);
 			c[i]->SetLeftMargin(0.2);
