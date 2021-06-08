@@ -298,6 +298,18 @@ void DrawResult(ExpInfo expInfo, string mode, string projection)
 			c[i]->SetRightMargin(0.2);
 			c[i]->SetLeftMargin(0.2);
 
+			// set 2D image x and y range
+			if(name.find_first_of("mm") != -1)
+			{
+				string xstart = (name.substr(name.find_first_of("mm")-9, 9)).substr(0, 4);
+				string xend = (name.substr(name.find_first_of("mm")-9, 9)).substr(5, 4);
+				string ystart = (name.substr(name.find_last_of("mm")-10, 9)).substr(0, 4);
+				string yend = (name.substr(name.find_last_of("mm")-10, 9)).substr(5, 4);
+
+				hxy->GetXaxis()->SetRangeUser(atof(xstart.c_str()), atof(xend.c_str()));
+				hxy->GetYaxis()->SetRangeUser(atof(ystart.c_str()), atof(yend.c_str()));
+			}
+
 			TH2D_setting(hxy);
 			hxy->SetTitle("");
 			// hxy->SetContour(50);
