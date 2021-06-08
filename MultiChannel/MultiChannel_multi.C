@@ -14,8 +14,12 @@
 #include <sstream>
 #include <dirent.h>
 #include "TCanvas.h"
+#include "TFile.h"
 #include "TH1F.h"
 #include "TGraph.h"
+#include "TStyle.h"
+
+using namespace std;
 
 bool GetPath(string path, vector<string> &name); // 获取目录下的所有文件名
 
@@ -57,11 +61,11 @@ void MultiChannel_multi(string dataDir)
 					if(data.fail())
 					{
 						cout << "Can not find the file \" " << filename[j] << " \" " << endl;
-						return 0;				
+						exit(0);				
 					}
 					istringstream ss;
 					string line;
-					Double_t measureTime = 0;
+					Double_t measureTime = 0, effTime = 0;
 					Int_t startChannel = 0, endChannel = 0;
 					Int_t sumCounts = 0;
 
@@ -71,7 +75,7 @@ void MultiChannel_multi(string dataDir)
 
 					getline(data, line);
 					ss.str(line);
-					ss >> measureTime >> measureTime; // 得到测试时长
+					ss >> effTime >> measureTime; // 得到测试时长
 					getline(data, line);
 					getline(data, line);
 					ss.str(line);
@@ -101,7 +105,7 @@ void MultiChannel_multi(string dataDir)
 					Double_t leftValue = h->FindFirstBinAbove(h->GetMaximum()/2);
 					Double_t rightValue = h->FindLastBinAbove(h->GetMaximum()/2);
 
-					result[1][j] = sumCounts / measureTime;
+					result[1][j] = sumCounts / effTime;
 					result[2][j] = h->GetMaximumBin();	
 					result[3][j] = (rightValue - leftValue) / h->GetMaximumBin();
 
