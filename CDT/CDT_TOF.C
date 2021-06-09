@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "TROOT.h"
+#include "TFile.h"
 #include "TStyle.h"
 #include "TCanvas.h"
 #include "TH1D.h"
@@ -18,11 +19,11 @@ typedef struct
 	double padSize;
 	double widthBin;
 	int binNum;
-	double length;
+	double length; // flight length
 
-	string startT;
-	string realT;
-	string stopT;
+	string startT; // start time
+	string realT;  // real time
+	string stopT;  // stop time
 	double counts;
 	double countRate;
 
@@ -32,13 +33,15 @@ typedef struct
 
 void ProcessTxt(ExpInfo &);
 void ProcessTOF(ExpInfo &, string);
-void DrawResult(ExpInfo, string, string);
+void DrawResult(ExpInfo, string, string, bool);
 void TH1D_setting(TH1D *);
 void TH2D_setting(TH2D *);
 void CDT_TOF(string filename, string mode = "all", string projection = "no")
 {
-	const double Length = 11.4 + 4.768 + 0.04; // m
-	const double padSize = 1.5625;			   // mm
+	const bool saveResult = false; // save canvas to root file
+
+	const double length = 11.4 + 4.768 + 0.04; // m
+	const double pad_size = 1.5625;			   // mm
 
 	int channel = 64;		// channels of detector (x or y)
 	double width_bin = 80.; // per bin (us)
@@ -50,15 +53,15 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 
 	ExpInfo expInfo;
 	expInfo.fileName = filename;
-	expInfo.padSize = padSize;
+	expInfo.padSize = pad_size;
 	expInfo.channel = channel;
 	expInfo.widthBin = width_bin;
 	expInfo.binNum = n_line;
-	expInfo.length = Length;
+	expInfo.length = length;
 
 	ProcessTxt(expInfo);
 	ProcessTOF(expInfo, mode);
-	DrawResult(expInfo, mode, projection);
+	DrawResult(expInfo, mode, projection, saveResult);
 }
 // Process TXT file
 void ProcessTxt(ExpInfo &expInfo)
@@ -219,7 +222,7 @@ void ProcessTOF(ExpInfo &expInfo, string mode)
 
 	// create 3D histogram (x, y, t)
 	expInfo.hxyt = new TH3D("", ";x [mm];y [mm];tof [#mus]", expInfo.channel, 0, expInfo.padSize * expInfo.channel, expInfo.channel, 0, expInfo.padSize * expInfo.channel, expInfo.binNum, 0, expInfo.binNum * expInfo.widthBin);
-	expInfo.hxyt->SetNameTitle(name, name);
+	expInfo.hxyt->SetNameTitle(("3D" + string(name)).c_str(), ("3D" + string(name)).c_str());
 
 	uint64_t temp;
 	for (int i = 0; i < expInfo.binNum; i++)
@@ -256,9 +259,9 @@ void ProcessTOF(ExpInfo &expInfo, string mode)
 	rawData.close();
 }
 // Draw result
-void DrawResult(ExpInfo expInfo, string mode, string projection)
+void DrawResult(ExpInfo expInfo, string mode, string projection, bool save)
 {
-	string name = expInfo.hxyt->GetName();
+	string name = string(expInfo.hxyt->GetName()).substr(2);
 	// 2D position spectrum
 	TH2D *hxy = (TH2D *)expInfo.hxyt->Project3D("yx");
 
@@ -283,9 +286,19 @@ void DrawResult(ExpInfo expInfo, string mode, string projection)
 		h[3]->GetYaxis()->SetTitle("Counts");
 	}
 
-	// create canvases for different mode
+	// create root file
+	TFile *f;
+	if (save)
+	{
+		string rootname = expInfo.fileName.substr(0, expInfo.fileName.find_last_of(".")) + ".root";
+		f = new TFile(rootname.c_str(), "UPDATE");
+
+		if (!f->Get(expInfo.hxyt->GetName()))
+			expInfo.hxyt->Write();
+	}
+	// create canvas for different mode
 	const int nCanvas = 5;
-	string c_name[nCanvas] = {"2D Imaging ", "Time of Flight ", "Neutron wavelength ", "X Projection ", "Y Projection "};
+	string c_name[nCanvas] = {"2DImaging", "TimeOfFlight", "NeutronWavelength", "XProjection", "YProjection"};
 	TCanvas *c[nCanvas];
 	for (int i = 0; i < (projection != "no" ? nCanvas : (nCanvas - 2)); i++)
 	{
@@ -299,12 +312,12 @@ void DrawResult(ExpInfo expInfo, string mode, string projection)
 			c[i]->SetLeftMargin(0.2);
 
 			// set 2D image x and y range
-			if(name.find_first_of("mm") != -1)
+			if (name.find_first_of("mm") != -1)
 			{
-				string xstart = (name.substr(name.find_first_of("mm")-9, 9)).substr(0, 4);
-				string xend = (name.substr(name.find_first_of("mm")-9, 9)).substr(5, 4);
-				string ystart = (name.substr(name.find_last_of("mm")-10, 9)).substr(0, 4);
-				string yend = (name.substr(name.find_last_of("mm")-10, 9)).substr(5, 4);
+				string xstart = (name.substr(name.find_first_of("mm") - 9, 9)).substr(0, 4);
+				string xend = (name.substr(name.find_first_of("mm") - 9, 9)).substr(5, 4);
+				string ystart = (name.substr(name.find_last_of("mm") - 10, 9)).substr(0, 4);
+				string yend = (name.substr(name.find_last_of("mm") - 10, 9)).substr(5, 4);
 
 				hxy->GetXaxis()->SetRangeUser(atof(xstart.c_str()), atof(xend.c_str()));
 				hxy->GetYaxis()->SetRangeUser(atof(ystart.c_str()), atof(yend.c_str()));
@@ -326,7 +339,14 @@ void DrawResult(ExpInfo expInfo, string mode, string projection)
 			h[i - 1]->SetTitle("");
 			h[i - 1]->Draw();
 		}
+		if (save)
+		{
+			if (!f->Get(c[i]->GetName()))
+				c[i]->Write();
+		}
 	}
+	if (save)
+		f->Close();
 }
 // 1D histogram setting
 void TH1D_setting(TH1D *myHist)
