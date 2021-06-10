@@ -9,6 +9,7 @@
 #include "TH1D.h"
 #include "TH2D.h"
 #include "TH3D.h"
+#include "TF1.h"
 
 using namespace std;
 
@@ -34,11 +35,12 @@ typedef struct
 void ProcessTxt(ExpInfo &);
 void ProcessTOF(ExpInfo &, string);
 void DrawResult(ExpInfo, string, string, bool);
+double TransferFunction(const double *, const double *);
 void TH1D_setting(TH1D *);
 void TH2D_setting(TH2D *);
 void CDT_TOF(string filename, string mode = "all", string projection = "no")
 {
-	const bool saveResult = false; // save canvas to root file
+	const bool saveResult = true; // save results to root file
 
 	const double length = 11.4 + 4.768 + 0.04; // m
 	const double pad_size = 1.5625;			   // mm
@@ -50,6 +52,7 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	gStyle->SetPalette(1);	  // set 2D color
 	gStyle->SetOptFit(0111);  // set fit parameter
 	gStyle->SetOptStat(0000); // set hist parameter
+	gStyle->SetCanvasPreferGL(1);
 
 	ExpInfo expInfo;
 	expInfo.fileName = filename;
@@ -261,9 +264,11 @@ void ProcessTOF(ExpInfo &expInfo, string mode)
 // Draw result
 void DrawResult(ExpInfo expInfo, string mode, string projection, bool save)
 {
+	const bool save3D = false; // save 3D spectrum, it need to take much time
+
 	string name = string(expInfo.hxyt->GetName()).substr(2);
-	// 2D position spectrum
-	TH2D *hxy = (TH2D *)expInfo.hxyt->Project3D("yx");
+
+	TH2D *hxy = (TH2D *)expInfo.hxyt->Project3D("yx"); // 2D position spectrum
 
 	TH1D *h[4]; // TOF, Wavelength, X, Y
 
@@ -272,7 +277,7 @@ void DrawResult(ExpInfo expInfo, string mode, string projection, bool save)
 	h[0]->GetYaxis()->SetTitle("Counts");
 
 	// wavelength spectrum
-	h[1] = new TH1D("", ";Neutron wavelength [#AA];Counts", expInfo.binNum, 0., (expInfo.binNum * expInfo.widthBin) / (252.778 * expInfo.length));
+	h[1] = new TH1D("", ";Neutron wavelength [A];Counts", expInfo.binNum, 0., (expInfo.binNum * expInfo.widthBin) / (252.778 * expInfo.length));
 	for (int i = 0; i < expInfo.binNum; i++)
 		h[1]->SetBinContent(i + 1, h[0]->GetBinContent(i + 1));
 
@@ -292,9 +297,23 @@ void DrawResult(ExpInfo expInfo, string mode, string projection, bool save)
 	{
 		string rootname = expInfo.fileName.substr(0, expInfo.fileName.find_last_of(".")) + ".root";
 		f = new TFile(rootname.c_str(), "UPDATE");
+	}
+	if (save3D)
+	{
+		// specify the transfer function.
+		TList *lf = expInfo.hxyt->GetListOfFunctions();
+		if (lf)
+		{
+			TF1 *tf = new TF1("TransferFunction", TransferFunction);
+			lf->Add(tf);
+		}
+		TCanvas *c3d = new TCanvas();
+		c3d->SetName(("3DImaging" + name).c_str());
+		c3d->SetTitle(("3DImaging" + name).c_str());
+		expInfo.hxyt->Draw("glcolzfb");
 
-		if (!f->Get(expInfo.hxyt->GetName()))
-			expInfo.hxyt->Write();
+		if (!f->Get(c3d->GetName()))
+			c3d->Write();
 	}
 	// create canvas for different mode
 	const int nCanvas = 5;
@@ -347,6 +366,25 @@ void DrawResult(ExpInfo expInfo, string mode, string projection, bool save)
 	}
 	if (save)
 		f->Close();
+}
+double TransferFunction(const double *px, const double *)
+{
+	const double x = *px;
+	if (x > 700)
+		return 0.07;
+	if (x < 700. && x > 600.)
+		return 0.06;
+	if (x < 600. && x > 500.)
+		return 0.05;
+	if (x < 500. && x > 400.)
+		return 0.04;
+	if (x < 400. && x > 300.)
+		return 0.03;
+	if (x < 300. && x > 200.)
+		return 0.02;
+	if (x < 200. && x > 100.)
+		return 0.01;
+	return 0.005;
 }
 // 1D histogram setting
 void TH1D_setting(TH1D *myHist)
