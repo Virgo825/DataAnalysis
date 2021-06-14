@@ -1,6 +1,7 @@
 // tof = 252.778 * L * lamda; (us, m and A)
 #include <iostream>
 #include <fstream>
+#include <ctime>
 
 #include "TROOT.h"
 #include "TFile.h"
@@ -22,9 +23,9 @@ typedef struct
 	int binNum;
 	double length; // flight length
 
-	string startT; // start time
-	string realT;  // real time
-	string stopT;  // stop time
+	struct tm startT; // start time
+	int realT;  // real time
+	struct tm stopT;  // stop time
 	double counts;
 	double countRate;
 
@@ -35,12 +36,13 @@ typedef struct
 void ProcessTxt(ExpInfo &);
 void ProcessTOF(ExpInfo &, string);
 void DrawResult(ExpInfo, string, string, bool);
+uint64_t GetProton(ExpInfo, string);
 double TransferFunction(const double *, const double *);
 void TH1D_setting(TH1D *);
 void TH2D_setting(TH2D *);
 void CDT_TOF(string filename, string mode = "all", string projection = "no")
 {
-	const bool saveResult = true; // save results to root file
+	const bool saveResult = false; // save results to root file
 
 	const double length = 11.4 + 4.768 + 0.04; // m
 	const double pad_size = 1.5625;			   // mm
@@ -48,6 +50,8 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	int channel = 64;		// channels of detector (x or y)
 	double width_bin = 80.; // per bin (us)
 	int n_line = 500;		// number of bin
+
+	const string protonFile = "./Data/RTBT-20210528.txt";
 
 	gStyle->SetPalette(1);	  // set 2D color
 	gStyle->SetOptFit(0111);  // set fit parameter
@@ -63,8 +67,11 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	expInfo.length = length;
 
 	ProcessTxt(expInfo);
-	ProcessTOF(expInfo, mode);
-	DrawResult(expInfo, mode, projection, saveResult);
+	// ProcessTOF(expInfo, mode);
+	// DrawResult(expInfo, mode, projection, saveResult);
+
+	uint64_t num = GetProton(expInfo, protonFile);
+
 }
 // Process TXT file
 void ProcessTxt(ExpInfo &expInfo)
@@ -97,6 +104,13 @@ void ProcessTxt(ExpInfo &expInfo)
 					// windows system line feed contains /r.
 					token = strtok(NULL, " \r");
 					expInfo.fileName = expInfo.fileName.substr(0, expInfo.fileName.find_last_of("/") + 1) + string(token);
+					
+					expInfo.startT.tm_year = atoi(string(token).substr(5,2).c_str())+100;
+					expInfo.startT.tm_mon = atoi(string(token).substr(3, 2).c_str()) - 1;
+					expInfo.startT.tm_mday = atoi(string(token).substr(1, 2).c_str());
+					expInfo.stopT.tm_year = expInfo.startT.tm_year;
+					expInfo.stopT.tm_mon = expInfo.startT.tm_mon;
+					expInfo.stopT.tm_mday = expInfo.startT.tm_mday;
 				}
 				else if (strcmp(token, "No of X Stripes or Pixel ") == 0)
 				{
@@ -119,20 +133,33 @@ void ProcessTxt(ExpInfo &expInfo)
 				else if (strcmp(token, "Start Time   ") == 0)
 				{
 					token = strtok(NULL, " ");
-					expInfo.startT = string(token);
 					cout << "Start Time:    " << token << endl;
+
+					expInfo.startT.tm_hour = atoi(string(token).substr(0,2).c_str());
+					expInfo.startT.tm_min = atoi(string(token).substr(3,2).c_str());
+					expInfo.startT.tm_sec = atoi(string(token).substr(6,2).c_str());
 				}
 				else if (strcmp(token, "Real Time    ") == 0)
 				{
 					token = strtok(NULL, " ");
-					expInfo.stopT = string(token);
 					cout << "Real Time:     " << token << endl;
+
+					int h = atoi(string(token).substr(0,2).c_str());
+					int m = atoi(string(token).substr(3,2).c_str());
+					int s = atoi(string(token).substr(6,2).c_str());
+					expInfo.realT = h*3600+m*60+s;
 				}
 				else if (strcmp(token, "Stop Time    ") == 0)
 				{
 					token = strtok(NULL, " ");
-					expInfo.realT = string(token);
 					cout << "Stop Time:     " << token << endl;
+
+					expInfo.stopT.tm_hour = atoi(string(token).substr(0,2).c_str());
+					expInfo.stopT.tm_min = atoi(string(token).substr(3,2).c_str());
+					expInfo.stopT.tm_sec = atoi(string(token).substr(6,2).c_str());
+
+					if(difftime(mktime(&expInfo.startT), mktime(&expInfo.stopT)) < 0)
+						expInfo.stopT.tm_mday++;
 				}
 				else if (strcmp(token, "No of Counts ") == 0)
 				{
@@ -146,7 +173,6 @@ void ProcessTxt(ExpInfo &expInfo)
 					expInfo.countRate = atof(token);
 					cout << "Counting rate:    " << token << endl;
 				}
-
 				token = strtok(NULL, ":");
 			}
 		}
@@ -367,9 +393,51 @@ void DrawResult(ExpInfo expInfo, string mode, string projection, bool save)
 	if (save)
 		f->Close();
 }
+uint64_t GetProton(ExpInfo expInfo, string filename)
+{
+	ifstream data(filename.c_str());
+	if(data)
+	{
+		uint64_t protonNum = 0;
+
+		time_t startTime = mktime(&expInfo.startT);
+		time_t stopTime = mktime(&expInfo.stopT);
+
+		char tstart[64], tstop[64];
+		strftime(tstart,sizeof(tstart),"%Y-%m-%d %H:%M:%S",&expInfo.startT);
+		strftime(tstop,sizeof(tstop),"%Y-%m-%d %H:%M:%S",&expInfo.stopT);
+
+		while(!data.eof())
+		{
+			time_t unixT;
+			string temp;
+			uint64_t counts;
+			data >> unixT >> temp >> counts;
+			if(data.fail())
+			{
+				if(unixT < stopTime)
+					printf("Need proton data from %s to %s.\n", tstart, tstop);
+
+				return -1;
+			}
+			if(unixT >= startTime && unixT <= stopTime)
+				protonNum += counts;
+
+			if(unixT > stopTime) break;
+		}
+		printf("Proton Number %lu from %s to %s\n",protonNum, tstart, tstop);
+		return protonNum;
+	}
+	else
+	{
+		cout << "open error " << filename << endl;
+		return -1;
+	}
+}
 double TransferFunction(const double *px, const double *)
 {
 	const double x = *px;
+	// x range need to be modified, from max to min.
 	if (x > 700)
 		return 0.07;
 	if (x < 700. && x > 600.)
