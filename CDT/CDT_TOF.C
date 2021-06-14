@@ -70,7 +70,7 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	ProcessTOF(expInfo, mode);
 	DrawResult(expInfo, mode, projection, saveResult);
 
-	uint64_t protonNum = GetProton(expInfo, protonFile);
+	// uint64_t protonNum = GetProton(expInfo, protonFile);
 
 }
 // Process TXT file
@@ -339,8 +339,9 @@ void DrawResult(ExpInfo expInfo, string mode, string projection, bool save)
 		c3d->SetTitle(("3DImaging" + name).c_str());
 		expInfo.hxyt->Draw("glcolzfb");
 
-		if (!f->Get(c3d->GetName()))
-			c3d->Write();
+		if(save)
+			if (!f->Get(c3d->GetName()))
+				c3d->Write();
 	}
 	// create canvas for different mode
 	const int nCanvas = 5;
