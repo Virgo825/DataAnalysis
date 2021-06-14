@@ -67,10 +67,10 @@ void CDT_TOF(string filename, string mode = "all", string projection = "no")
 	expInfo.length = length;
 
 	ProcessTxt(expInfo);
-	// ProcessTOF(expInfo, mode);
-	// DrawResult(expInfo, mode, projection, saveResult);
+	ProcessTOF(expInfo, mode);
+	DrawResult(expInfo, mode, projection, saveResult);
 
-	uint64_t num = GetProton(expInfo, protonFile);
+	uint64_t protonNum = GetProton(expInfo, protonFile);
 
 }
 // Process TXT file
@@ -108,6 +108,7 @@ void ProcessTxt(ExpInfo &expInfo)
 					expInfo.startT.tm_year = atoi(string(token).substr(5,2).c_str())+100;
 					expInfo.startT.tm_mon = atoi(string(token).substr(3, 2).c_str()) - 1;
 					expInfo.startT.tm_mday = atoi(string(token).substr(1, 2).c_str());
+
 					expInfo.stopT.tm_year = expInfo.startT.tm_year;
 					expInfo.stopT.tm_mon = expInfo.startT.tm_mon;
 					expInfo.stopT.tm_mday = expInfo.startT.tm_mday;
@@ -158,7 +159,7 @@ void ProcessTxt(ExpInfo &expInfo)
 					expInfo.stopT.tm_min = atoi(string(token).substr(3,2).c_str());
 					expInfo.stopT.tm_sec = atoi(string(token).substr(6,2).c_str());
 
-					if(difftime(mktime(&expInfo.startT), mktime(&expInfo.stopT)) < 0)
+					if(difftime(mktime(&expInfo.stopT), mktime(&expInfo.startT)) < 0)
 						expInfo.stopT.tm_mday++;
 				}
 				else if (strcmp(token, "No of Counts ") == 0)
@@ -400,6 +401,7 @@ uint64_t GetProton(ExpInfo expInfo, string filename)
 	{
 		uint64_t protonNum = 0;
 
+		// the code runs error(mktime return -1) in WSL1(Ubuntu20.04).
 		time_t startTime = mktime(&expInfo.startT);
 		time_t stopTime = mktime(&expInfo.stopT);
 
